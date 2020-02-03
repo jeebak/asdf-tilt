@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+install_tilt() {
+  local install_type=$1
+  local version=$2
+  local install_path=$3
+  local bin_install_path="$install_path/bin"
+  local binary_path="$bin_install_path/tilt"
+  local download_url=$(get_download_url $version)
+
+  if [ "$TMPDIR" = "" ]; then
+    local tmp_download_dir=$(mktemp -d -t tilt_XXXXXX)
+  else
+    local tmp_download_dir=$TMPDIR
+  fi
+
+  local download_path="$tmp_download_dir/$(get_filename)"
+
+  echo "Downloading tilt from ${download_url}"
+  curl -Lo $download_path $download_url
+
+  echo "Creating bin directory"
+  mkdir -p "${bin_install_path}"
+
+  echo "Cleaning previous binaries"
+  rm -f $binary_path 2>/dev/null || true
+
+  echo "Copying binary"
+  tar zxf $download_path -C $bin_install_path
+}
+
+get_arch() {
+  # https://github.com/windmilleng/tilt/releases/download/v0.11.4/tilt.0.11.4.linux.x86_64.tar.gz
+  # https://github.com/windmilleng/tilt/releases/download/v0.11.4/tilt.0.11.4.mac.x86_64.tar.gz
+  case $(uname) in
+    Darwin)
+      echo mac
+      ;;
+    Linux)
+      echo linux
+      ;;
+  esac
+}
+
+get_filename() {
+  local platform="$(get_arch)"
+  local version="$1"
+
+  echo "tilt.${version}.${platform}.x86_64.tar.gz"
+}
+
+get_download_url() {
+  local version=$1
+  local filename="$(get_filename $version)"
+
+  echo "https://github.com/windmilleng/tilt/releases/download/v${version}/${filename}"
+}
+
+install_tilt $ASDF_INSTALL_TYPE $ASDF_INSTALL_VERSION $ASDF_INSTALL_PATH
